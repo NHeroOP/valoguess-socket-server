@@ -18,7 +18,7 @@ import {
   updateRoomSettings,
   saveRoom,
 } from "./service.js";
-import { roomMapper } from "./mapper.js";
+import { roomMapper } from "@/shared/utils/mapper.js";
 
 export function roomListener(io: Server, socket: Socket) {
   socket.on(

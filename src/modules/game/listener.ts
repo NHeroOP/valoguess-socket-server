@@ -9,7 +9,7 @@ import {
 } from "./schema.js";
 
 import { changeTurn, startGame } from "./service.js";
-import { roomMapper } from "../room/mapper.js";
+import { roomMapper } from "@/shared/utils/mapper.js";
 
 export function gameListener(io: Server, socket: Socket) {
   socket.on(ClientEvents.GAME_START,
