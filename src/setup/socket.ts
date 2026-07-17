@@ -12,10 +12,14 @@ export function createSocketServer(server: Server) {
     },
   });
 
-  io.on("connection", (socket: Socket) => {
+  io.on("connect", (socket: Socket) => {
     console.log(`${socket.id} connected`);
 
     registerHandlers(io, socket);
+  });
+
+  io.on("disconnect", (socket: Socket) => {
+    console.log(`${socket.id} disconnected`);
   });
 
   return io;
