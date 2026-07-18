@@ -14,7 +14,7 @@ export interface Player {
   id: string;
   username: string;
   socketId: string;
-  ready: boolean;
+  // ready: boolean;
 }
 
 export interface Spectator {
@@ -50,6 +50,7 @@ export interface GameState {
 export interface PlayerState {
   secretAgent: string;
   guess: string | null;
+  isGuessCorrect?: boolean;
   nosRemaining: number;
   guessesRemaining: number;
 }
@@ -58,7 +59,7 @@ export interface PendingQuestion {
   askedBy: string;
   targetPlayer: string;
   questionId: string;
-  questionLabel: string;
+  // questionLabel: string;
 }
 
 export interface QuestionHistory {
