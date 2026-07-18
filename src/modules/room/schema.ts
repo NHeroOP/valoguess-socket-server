@@ -26,6 +26,7 @@
 
   export const updateRoomSchema = z.object({
     roomId: z.string(),
+    playerId: z.string(),
     settings: z.object({
       maxNos: z.number().int().min(1).max(10),
       maxRounds: z.number().int().min(1).max(10),

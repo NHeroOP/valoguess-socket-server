@@ -41,7 +41,6 @@ export async function createRoom(socketId: string, payload: createRoomPayload) {
     id: player.id,
     username: player.username,
     socketId: socketId,
-    ready: false,
   };
 
   const room: Room = {

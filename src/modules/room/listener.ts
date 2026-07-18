@@ -33,7 +33,7 @@ export function roomListener(io: Server, socket: Socket) {
 
       const room = await createRoom(socket.id, parsed.data);
 
-      io.to(room.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
+      io.to(room.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, parsed.data.player.id));
     }),
   );
 
@@ -52,7 +52,6 @@ export function roomListener(io: Server, socket: Socket) {
         id: player.id,
         username: player.username,
         socketId: socket.id,
-        ready: false,
       });
 
       await socket.join(room.id);
@@ -62,12 +61,12 @@ export function roomListener(io: Server, socket: Socket) {
 
   socket.on(
     ClientEvents.ROOM_LEAVE,
-    asyncHandler(socket, async (roomId: string) => {
+    asyncHandler(socket, async ({roomId, playerId}) => {
       const room = await removePlayerFromRoom(roomId, socket.id);
 
       await socket.leave(roomId);
       if (!room) return;
-      io.to(room.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
+      io.to(room.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, playerId));
     }),
   );
 
@@ -85,7 +84,7 @@ export function roomListener(io: Server, socket: Socket) {
         parsed.data.settings,
       );
 
-      io.to(room.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
+      io.to(room.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, parsed.data.playerId));
     }),
   );
 
