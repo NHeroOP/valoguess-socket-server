@@ -8,28 +8,16 @@ import {
 
 } from "./schema.js";
 
-import { changeTurn, startGame } from "./service.js";
+import { startGame } from "./service.js";
 import { roomMapper } from "@/shared/utils/mapper.js";
 
 export function gameListener(io: Server, socket: Socket) {
   socket.on(ClientEvents.GAME_START,
-    asyncHandler(socket, async (roomId: string) => {
+    asyncHandler(socket, async ({ roomId, playerId }) => {
 
       const room = await startGame(roomId);
-      io.to(socket.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
+      io.to(socket.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, playerId));
     })
   )
 
-  socket.on(ClientEvents.TURN_END,
-    asyncHandler(socket, async (roomId: string) => {
-      const room = await changeTurn(roomId);
-
-      if (!room) {
-        emitError(socket, "Room not found");
-        return;
-      }
-
-      io.to(socket.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
-    })
-  )
 }

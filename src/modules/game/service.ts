@@ -52,15 +52,19 @@ export async function startGame(roomId: string): Promise<Room> {
     };
   }
 
-  startTurnTimer(roomId, room.settings.timePerRound)
+  startTurnTimer(room.id, room.settings.timePerRound)
 
   await saveRoom(room);
   return room;
 }
 
 
-export async function changeTurn(roomId: string): Promise<Room> {
-  const room = await getRoomById(roomId);
+export async function changeTurn(roomIdentifier: string | Room): Promise<Room> {
+
+  let room =
+    typeof roomIdentifier === "string"
+      ? await getRoomById(roomIdentifier)
+      : roomIdentifier;
 
   if (!room) {
     throw new AppError("Room not found");
@@ -83,7 +87,7 @@ export async function changeTurn(roomId: string): Promise<Room> {
   room.game.currentTurn = nextTurnPlayer.id;
   room.game.turnNumber++;
   
-  restartTurnTimer(roomId, room.settings.timePerRound);
+  restartTurnTimer(room.id, room.settings.timePerRound);
 
   await saveRoom(room);
   return room;
@@ -91,23 +95,23 @@ export async function changeTurn(roomId: string): Promise<Room> {
 
 
 
-export async function resetGame(roomId: string): Promise<Room> {
-  const room = await getRoomById(roomId);
+// export async function resetGame(roomId: string): Promise<Room> {
+//   const room = await getRoomById(roomId);
 
-  if (!room) {
-    throw new AppError("Room not found");
-  }
+//   if (!room) {
+//     throw new AppError("Room not found");
+//   }
 
-  room.state = "waiting";
-  delete room.game;
+//   room.state = "waiting";
+//   delete room.game;
 
-  for (const player of room.players) {
-    player.ready = false;
-  }
+//   for (const player of room.players) {
+//     player.ready = false;
+//   }
 
-  await saveRoom(room);
-  return room;
-}
+//   await saveRoom(room);
+//   return room;
+// }
 
 export async function getCurrentPlayer(roomId: string, socketId: string): Promise<Player> {
 
@@ -131,26 +135,26 @@ export async function getCurrentPlayer(roomId: string, socketId: string): Promis
 }
 
 
-export async function endGame(roomId: string, winnerId: string): Promise<Room> {
-  const room = await getRoomById(roomId);
+// export async function endGame(roomId: string, winnerId: string): Promise<Room> {
+//   const room = await getRoomById(roomId);
 
-  if (!room) {
-    throw new AppError("Room not found");
-  }
+//   if (!room) {
+//     throw new AppError("Room not found");
+//   }
 
-  if (room.state !== "playing") {
-    throw new AppError("Game is not currently in progress");
-  }
+//   if (room.state !== "playing") {
+//     throw new AppError("Game is not currently in progress");
+//   }
 
-  room.state = "finished";
-  room.game!.winnerId = winnerId;
-  room.game!.endedAt = Date.now();
+//   room.state = "finished";
+//   room.game!.winnerId = winnerId;
+//   room.game!.endedAt = Date.now();
 
-  clearTurnTimer(roomId);
+//   clearTurnTimer(roomId);
 
-  await saveRoom(room);
-  return room;
-}
+//   await saveRoom(room);
+//   return room;
+// }
 
 export async function getOpponent(roomId: string, socketId: string): Promise<Player> {
 
