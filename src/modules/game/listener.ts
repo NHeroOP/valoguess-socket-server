@@ -16,7 +16,7 @@ export function gameListener(io: Server, socket: Socket) {
       for (const player of room.players) {
         io.to(player.socketId).emit(
           ServerEvents.ROOM_SYNC,
-          roomMapper(room, socket.id),
+          roomMapper(room, player.socketId),
         );
       }
     }),

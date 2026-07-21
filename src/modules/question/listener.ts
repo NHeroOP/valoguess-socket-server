@@ -17,10 +17,14 @@ export function questionListener(io: Server, socket: Socket) {
     ClientEvents.QUESTION_ASK,
     asyncHandler(socket, async (payload) => {
       const { roomId, questionId } = askQuestionSchema.parse(payload);
-      const room = await askQuestion( roomId, socket.id, questionId );
+      const room = await askQuestion(roomId, socket.id, questionId);
 
-      io.to(socket.id)
-        .emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
+      for (const player of room.players) {
+        io.to(player.socketId).emit(
+          ServerEvents.ROOM_SYNC,
+          roomMapper(room, player.socketId),
+        );
+      }
     }),
   );
 
@@ -30,8 +34,12 @@ export function questionListener(io: Server, socket: Socket) {
       const { roomId, answer } = answerQuestionSchema.parse(payload);
       const room = await answerQuestion( roomId, socket.id, answer );
 
-      io.to(socket.id)
-        .emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
+      for (const player of room.players) {
+        io.to(player.socketId).emit(
+          ServerEvents.ROOM_SYNC,
+          roomMapper(room, player.socketId),
+        );
+      }
     }),
   );
 
@@ -41,8 +49,12 @@ export function questionListener(io: Server, socket: Socket) {
       const { roomId, guess } = makeGuessSchema.parse(payload);
       const room = await makeGuess( roomId, socket.id, guess );
 
-      io.to(socket.id)
-        .emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
+      for (const player of room.players) {
+        io.to(player.socketId).emit(
+          ServerEvents.ROOM_SYNC,
+          roomMapper(room, player.socketId),
+        );
+      }
     }),
   );
 }
