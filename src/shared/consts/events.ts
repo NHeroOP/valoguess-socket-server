@@ -3,6 +3,7 @@ export const ClientEvents = {
   ROOM_JOIN: "room:join",
   ROOM_LEAVE: "room:leave",
   ROOM_UPDATE: "room:update",
+  ROOM_KICK: "room:kick",
 
   ROOM_RECONNECT: "room:reconnect",
 

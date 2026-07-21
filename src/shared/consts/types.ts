@@ -14,7 +14,7 @@ export interface Player {
   id: string;
   username: string;
   socketId: string;
-  // ready: boolean;
+  reconnectToken: string | null;
 }
 
 export interface Spectator {
@@ -59,7 +59,6 @@ export interface PendingQuestion {
   askedBy: string;
   targetPlayer: string;
   questionId: string;
-  // questionLabel: string;
 }
 
 export interface QuestionHistory {
