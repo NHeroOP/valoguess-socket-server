@@ -6,11 +6,26 @@ import type {
   RoomState,
   Settings,
 } from "@/shared/consts/types.js";
+import { AppError } from "./error.js";
 
 export interface RoomPlayerDTO {
   id: string;
   username: string;
-  ready: boolean;
+}
+
+export interface PlayerGameStateDTO {
+  isMyTurn: boolean;
+
+  secretAgent: string | null;
+  guess: string | null;
+
+  nosRemaining: number;
+  guessesRemaining: number;
+}
+
+export interface PlayerDTO {
+  player: RoomPlayerDTO;
+  state: PlayerGameStateDTO;
 }
 
 export interface RoomSpectatorDTO {
@@ -18,120 +33,136 @@ export interface RoomSpectatorDTO {
   username: string;
 }
 
-export interface RoomDTO {
-  id: string;
-  state: RoomState;
-  isHost: boolean;
-  players: RoomPlayerDTO[];
-  spectators: RoomSpectatorDTO[];
-  settings: Settings;
-  createdAt: number;
-  game?: GameStateDTO;
-}
-
 export interface GameStateDTO {
   startedAt: number;
-  currentTurn: string;
   turnNumber: number;
 
   pendingQuestion?: PendingQuestion | undefined;
   history: QuestionHistory[];
 
-  playerStates: Record<string, PlayerStateDTO>;
-
   winnerId?: string | undefined;
   endedAt?: number | undefined;
 }
 
-export interface PlayerStateDTO {
-  secretAgent: string | null;
-  guess: string | null;
-  nosRemaining: number;
-  guessesRemaining: number;
+export interface RoomDTO {
+  id: string;
+  state: RoomState;
+  hostId: string;
+
+  me: PlayerDTO;
+  opponent?: PlayerDTO;
+
+  spectators: RoomSpectatorDTO[];
+
+  settings: Settings;
+  createdAt: number;
+
+  game?: GameStateDTO;
 }
 
 export function roomMapper(
   room: Room,
-  playerId: string,
+  socketId: string,
 ): RoomDTO {
-  const currentPlayer = room.players.find(
-    (player) => player.id === playerId,
-  );
 
-  if (!currentPlayer) {
-    throw new Error("Current player not found.");
+  const me = room.players.find((p) => p.socketId === socketId);
+
+  if (!me) {
+    throw new AppError("Current player not found.");
   }
 
-  const roomDto: RoomDTO = {
+  const opponent = room.players.find((p) => p.socketId !== socketId);
+
+  const dto: RoomDTO = {
     id: room.id,
     state: room.state,
-    isHost: room.hostId === currentPlayer.id,
+    hostId: room.hostId,
+
+    me: {
+      player: {
+        id: me.id,
+        username: me.username,
+      },
+      state: {
+        isMyTurn: false,
+        secretAgent: null,
+        guess: null,
+        nosRemaining: 0,
+        guessesRemaining: 0,
+      },
+    },
+
+    spectators: room.spectators.map((s) => ({
+      id: s.id,
+      username: s.username,
+    })),
+
     settings: room.settings,
     createdAt: room.createdAt,
-
-    players: room.players.map((player) => ({
-      id: player.id,
-      username: player.username,
-      ready: player.ready,
-    })),
-
-    spectators: room.spectators.map((spectator) => ({
-      id: spectator.id,
-      username: spectator.username,
-    })),
   };
 
-  if (room.game) {
-    return gameMapper(room, roomDto, currentPlayer.id);
+  if (opponent) {
+    dto.opponent = {
+      player: {
+        id: opponent.id,
+        username: opponent.username,
+      },
+      state: {
+        isMyTurn: false,
+        secretAgent: null,
+        guess: null,
+        nosRemaining: 0,
+        guessesRemaining: 0,
+      },
+    }
   }
 
-  return roomDto;
-}
-
-function gameMapper(room: Room, roomDto: RoomDTO, currentPlayerId: string): RoomDTO {
   if (!room.game) {
-    throw new Error("Game state is missing.");
-  }
-  
-  const playerStates: Record<string, PlayerStateDTO> = {};
-
-  for (const [playerId, state] of Object.entries(
-    room.game.playerStates,
-  )) {
-    playerStates[playerId] = mapPlayerState(
-      playerId,
-      state,
-      currentPlayerId,
-    );
+    return dto;
   }
 
-  roomDto.game = {
+  if (!dto.opponent || !opponent) {
+    throw new AppError("Opponent not found")
+  }
+
+  dto.me.state = mapPlayerState(
+    room.game.playerStates[me.id]!,
+    room.game.currentTurn === me.id,
+    true,
+  );
+
+  dto.opponent.state = mapPlayerState(
+    room.game.playerStates[opponent.id]!,
+    room.game.currentTurn === opponent.id,
+    false,
+  );
+
+  dto.game = {
     startedAt: room.game.startedAt,
-    currentTurn: room.game.currentTurn,
     turnNumber: room.game.turnNumber,
 
     pendingQuestion: room.game.pendingQuestion,
     history: room.game.history,
 
-    playerStates,
-
     winnerId: room.game.winnerId,
     endedAt: room.game.endedAt,
   };
 
-  return roomDto;
+  return dto;
 }
 
 function mapPlayerState(
-  playerId: string,
   state: PlayerState,
-  currentPlayerId: string,
-): PlayerStateDTO {
+  isMyTurn: boolean,
+  includeSecretAgent: boolean,
+): PlayerGameStateDTO {
+
   return {
-    secretAgent:
-      playerId === currentPlayerId
-        ? state.secretAgent
-        : null,
+    isMyTurn,
+
+    secretAgent: includeSecretAgent
+      ? state.secretAgent
+      : null,
 
     guess: state.guess,
     nosRemaining: state.nosRemaining,
