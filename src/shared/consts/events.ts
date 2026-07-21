@@ -27,6 +27,7 @@ export const ServerEvents = {
 
   CHAT_MESSAGE: "chat:message",
 
+  AUTH: "auth",
   ERROR: "app:error",
 } as const;
 

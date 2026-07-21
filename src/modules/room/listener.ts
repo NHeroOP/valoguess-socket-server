@@ -26,10 +26,11 @@ export function roomListener(io: Server, socket: Socket) {
     asyncHandler(socket, async (payload) => {
       const player = playerSchema.parse(payload);
 
-      const room = await createRoom(socket.id, player);
+      const { room, reconnectToken } = await createRoom(socket.id, player);
 
       await socket.join(room.id);
       io.to(room.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
+      io.to(socket.id).emit(ServerEvents.AUTH, reconnectToken)
     }),
   );
 
@@ -38,7 +39,7 @@ export function roomListener(io: Server, socket: Socket) {
     asyncHandler(socket, async (payload) => {
       const { roomId, player } = joinRoomSchema.parse(payload);
 
-      const room = await addPlayerToRoom(roomId, {
+      const { room, reconnectToken } = await addPlayerToRoom(roomId, {
         ...player,
         socketId: socket.id,
       });
@@ -48,9 +49,11 @@ export function roomListener(io: Server, socket: Socket) {
       for (const player of room.players) {
         io.to(player.socketId).emit(
           ServerEvents.ROOM_SYNC,
-          roomMapper(room, socket.id),
+          roomMapper(room, player.socketId),
         );
       }
+
+      io.to(socket.id).emit(ServerEvents.AUTH, reconnectToken)
     }),
   );
 
@@ -81,7 +84,7 @@ export function roomListener(io: Server, socket: Socket) {
       for (const player of room.players) {
         io.to(player.socketId).emit(
           ServerEvents.ROOM_SYNC,
-          roomMapper(room, socket.id),
+          roomMapper(room, player.socketId),
         );
       }
     }),
@@ -90,12 +93,17 @@ export function roomListener(io: Server, socket: Socket) {
   socket.on(
     ClientEvents.ROOM_KICK,
     asyncHandler(socket, async ({ roomId, kickedPlayerId }) => {
-      const room = await kickPlayerFromRoom(roomId, kickedPlayerId, socket.id);
+      const { room, kickedPlayer } = await kickPlayerFromRoom(roomId, kickedPlayerId, socket.id);
+      
+      const kickedPlayerSocket = io.sockets.sockets.get(kickedPlayer.socketId);
+      if (kickedPlayerSocket) {
+        kickedPlayerSocket.leave(roomId);
+      }
 
       for (const player of room.players) {
         io.to(player.socketId).emit(
           ServerEvents.ROOM_SYNC,
-          roomMapper(room, socket.id),
+          roomMapper(room, player.socketId),
         );
       }
     })

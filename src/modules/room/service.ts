@@ -33,11 +33,12 @@ export async function deleteRoom(roomId: string) {
 
 export async function createRoom(socketId: string, player: playerInput) {
   const roomId = await generateUniqueRoomCode();
+  const reconnectToken = crypto.randomUUID();
 
   const host: Player = {
     id: player.id,
     username: player.username,
-    reconnectToken: player.reconnectToken,
+    reconnectToken,
     socketId: socketId,
   };
 
@@ -53,7 +54,7 @@ export async function createRoom(socketId: string, player: playerInput) {
 
   await saveRoom(room);
 
-  return room;
+  return { room, reconnectToken };
 }
 
 export async function addPlayerToRoom(roomId: string, player: Player) {
@@ -67,11 +68,16 @@ export async function addPlayerToRoom(roomId: string, player: Player) {
     throw new AppError("Room is full");
   }
 
-  room.players.push(player);
+  const newPlayer = {
+      ...player,
+      reconnectToken: crypto.randomUUID()
+    }
+
+  room.players.push(newPlayer);
 
   await saveRoom(room);
 
-  return room;
+  return { room, reconnectToken: newPlayer.reconnectToken };
 }
 
 export async function updateRoomSettings(
@@ -112,11 +118,16 @@ export async function kickPlayerFromRoom(
     throw new AppError("Only the host can kick players");
   }
 
+  const kickedPlayer = room.players.find((p) => p.id === kickedPlayerId);
+  if (!kickedPlayer) {
+    throw new AppError("Player to kick not found in room");
+  }
+
   room.players = room.players.filter((player) => player.id !== kickedPlayerId);
 
   await saveRoom(room);
 
-  return room;
+  return {room , kickedPlayer};
 }
 
 export async function leaveRoom(roomId: string, socketId: string) {
