@@ -156,28 +156,6 @@ export async function getCurrentPlayer(roomId: string, socketId: string): Promis
 //   return room;
 // }
 
-export async function getOpponent(roomId: string, socketId: string): Promise<Player> {
-
-  const room = await getRoomById(roomId);
-  
-  if (!room) {
-    throw new AppError("Room not found");
-  }
-
-  if (room.state !== "playing") {
-    throw new AppError("Game is not currently in progress");
-  }
-
-  const opponent = room.players.find(player => player.socketId !== socketId
-    
-  );
-
-  if (!opponent) {
-    throw new AppError("Opponent not found in the room");
-  }
-
-  return opponent;
-}
 
 export async function checkWinCon(roomId: string): Promise<{
   winner: boolean;
