@@ -1,15 +1,13 @@
-import { randomUUID } from "node:crypto";
-
-import type { createRoomPayload } from "./schema.js";
+import { generateUniqueRoomCode } from "./utils.js";
 
 import { redis } from "@/setup/redis.js";
 import { AppError } from "@/shared/utils/error.js";
 import { DefaultSettings } from "@/shared/consts/types.js";
 import type { Room, Player, Settings } from "@/shared/consts/types.js";
-import { generateUniqueRoomCode } from "./utils.js";
+import type { playerInput } from "./schema.js";
 
 const ROOM_PREFIX = "room:";
-const ROOM_TTL = 60 * 30; // 30 minutes
+const ROOM_TTL = 60 * 10; // 10 minutes
 
 const roomKey = (roomId: string) => `${ROOM_PREFIX}${roomId}`;
 
@@ -33,13 +31,13 @@ export async function deleteRoom(roomId: string) {
   await redis.del(roomKey(roomId));
 }
 
-export async function createRoom(socketId: string, payload: createRoomPayload) {
-  const { player, settings = DefaultSettings } = payload;
+export async function createRoom(socketId: string, player: playerInput) {
   const roomId = await generateUniqueRoomCode();
 
   const host: Player = {
     id: player.id,
     username: player.username,
+    reconnectToken: player.reconnectToken,
     socketId: socketId,
   };
 
@@ -49,7 +47,7 @@ export async function createRoom(socketId: string, payload: createRoomPayload) {
     hostId: host.id,
     players: [host],
     spectators: [],
-    settings,
+    settings: DefaultSettings,
     createdAt: Date.now(),
   };
 
@@ -76,14 +74,64 @@ export async function addPlayerToRoom(roomId: string, player: Player) {
   return room;
 }
 
-export async function removePlayerFromRoom(roomId: string, socketId: string) {
+export async function updateRoomSettings(
+  roomId: string,
+  socketId: string,
+  settings: Settings,
+) {
+  const room = await getRoomById(roomId);
+  if (!room) {
+    throw new AppError("Room not found");
+  }
+
+  const currentPlayer = room.players.find((p) => p.socketId === socketId);
+  if (room.hostId !== currentPlayer?.id) {
+    throw new AppError("Only the host can update room settings");
+  }
+
+  room.settings = settings;
+
+  await saveRoom(room);
+
+  return room;
+}
+
+export async function kickPlayerFromRoom(
+  roomId: string,
+  kickedPlayerId: string,
+  socketId: string,
+) {
   const room = await getRoomById(roomId);
 
   if (!room) {
     throw new AppError("Room not found");
   }
 
-  room.players = room.players.filter((player) => player.socketId !== socketId);
+  const currentPlayer = room.players.find((p) => p.socketId === socketId);
+  if (room.hostId !== currentPlayer?.id) {
+    throw new AppError("Only the host can kick players");
+  }
+
+  room.players = room.players.filter((player) => player.id !== kickedPlayerId);
+
+  await saveRoom(room);
+
+  return room;
+}
+
+export async function leaveRoom(roomId: string, socketId: string) {
+  const room = await getRoomById(roomId);
+
+  if (!room) {
+    throw new AppError("Room not found");
+  }
+
+  const player = room.players.find((p) => p.socketId === socketId);
+  if (!player) {
+    throw new AppError("Player not found in room");
+  }
+
+  room.players = room.players.filter((p) => p.id !== player.id);
 
   if (room.players.length === 0) {
     await deleteRoom(room.id);
@@ -99,28 +147,18 @@ export async function removePlayerFromRoom(roomId: string, socketId: string) {
   return room;
 }
 
-export async function updateRoomSettings(roomId: string, settings: Settings) {
+export async function reconnectPlayerToRoom(
+  roomId: string,
+  reconnectToken: string,
+  socketId: string,
+) {
   const room = await getRoomById(roomId);
 
   if (!room) {
     throw new AppError("Room not found");
   }
 
-  room.settings = settings;
-
-  await saveRoom(room);
-
-  return room;
-}
-
-export async function reconnectPlayerToRoom(roomId: string, playerId: string, socketId: string) {
-  const room = await getRoomById(roomId);
-
-  if (!room) {
-    throw new AppError("Room not found");
-  }
-
-  const player = room.players.find((p) => p.id === playerId);
+  const player = room.players.find((p) => p.reconnectToken === reconnectToken);
 
   if (!player) {
     throw new AppError("Player not found in room");
