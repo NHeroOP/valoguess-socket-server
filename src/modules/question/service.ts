@@ -1,16 +1,15 @@
-import { redis } from "@/setup/redis.js";
-import { getRoomById, saveRoom } from "../room/service.js";
-import { AppError } from "@/shared/utils/error.js";
-import type { AnswerQuestionInput, AskQuestionInput, MakeGuessInput } from "./schema.js";
-import type { Player, Room } from "@/shared/consts/types.js";
-import { changeTurn } from "../game/service.js";
 import { clearTurnTimer } from "../game/timer.js";
+import { changeTurn } from "../game/service.js";
+import { getRoomById, saveRoom } from "../room/service.js";
 
-export async function askQuestion({
-  roomId,
-  playerId,
-  questionId,
-}: AskQuestionInput): Promise<Room> {
+import { AppError } from "@/shared/utils/error.js";
+import type { Room } from "@/shared/consts/types.js";
+
+export async function askQuestion(
+  roomId: string,
+  socketId: string,
+  questionId: string
+): Promise<Room> {
   const room = await getRoomById(roomId);
   if (!room) {
     throw new AppError("Room not found", 404);
@@ -23,10 +22,15 @@ export async function askQuestion({
   if (!room.game) {
     throw new AppError("Game not started", 400);
   }
+  
+  const currPlayer = room.players.find((player) => player.socketId === socketId);
+  if (!currPlayer) {
+    throw new AppError("Player not found", 404);
+  }
 
   const questionAlreadyAsked = room.game.history.some(
     (history) =>
-      history.questionId === questionId && history.askedBy === playerId,
+      history.questionId === questionId && history.askedBy === currPlayer.id,
   );
 
   if (questionAlreadyAsked) {
@@ -38,8 +42,8 @@ export async function askQuestion({
   }
 
   room.game.pendingQuestion = {
-    askedBy: playerId,
-    targetPlayer: room.players.find((player) => player.id !== playerId)!.id,
+    askedBy: currPlayer.id,
+    targetPlayer: room.players.find((player) => player.id !== currPlayer.id)!.id,
     questionId,
   };
 
@@ -47,11 +51,11 @@ export async function askQuestion({
   return room;
 }
 
-export async function answerQuestion({
-  roomId,
-  playerId,
-  answer,
-}: AnswerQuestionInput): Promise<Room> {
+export async function answerQuestion(
+  roomId: string,
+  socketId: string,
+  answer: "yes" | "no"
+): Promise<Room> {
   const room = await getRoomById(roomId);
   if (!room) {
     throw new AppError("Room not found", 404);
@@ -69,7 +73,12 @@ export async function answerQuestion({
     throw new AppError("No pending question", 400);
   }
 
-  if (room.game.pendingQuestion.targetPlayer !== playerId) {
+  const currPlayer = room.players.find((player) => player.socketId === socketId);
+  if (!currPlayer) {
+    throw new AppError("Player not found", 404);
+  }
+
+  if (room.game.pendingQuestion.targetPlayer !== currPlayer.id) {
     throw new AppError("You are not the target player", 400);
   }
 
@@ -103,11 +112,11 @@ function finishGame(
   clearTurnTimer(room.id);
 }
 
-export async function makeGuess({
-  roomId,
-  playerId,
-  guess,
-}: MakeGuessInput): Promise<Room> {
+export async function makeGuess(
+  roomId: string,
+  socketId: string,
+  guess: string
+): Promise<Room> {
   
   const room = await getRoomById(roomId);
   if (!room) {
@@ -117,6 +126,12 @@ export async function makeGuess({
   if (room.state !== "playing" || !room.game) {
     throw new AppError("Game not started", 400);
   }
+
+  const currPlayer = room.players.find((player) => player.socketId === socketId);
+  if (!currPlayer) {
+    throw new AppError("Player not found", 404);
+  }
+  const playerId = currPlayer.id;
 
   if (room.game.currentTurn !== playerId) {
     throw new AppError("It's not your turn", 400);
