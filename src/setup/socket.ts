@@ -1,5 +1,5 @@
+import "dotenv/config";
 import { Server } from "node:http";
-
 import { Socket, Server as SocketServer } from "socket.io";
 
 import { registerHandlers } from "./register.js";
@@ -7,7 +7,7 @@ import { registerHandlers } from "./register.js";
 export function createSocketServer(server: Server) {
   const io = new SocketServer(server, {
     cors: {
-      origin: ["http://localhost:3000", "https://your-domain.com"],
+      origin: ["http://localhost:3000", process.env.FRONTEND_URL!],
       credentials: true,
     },
   });
@@ -18,7 +18,7 @@ export function createSocketServer(server: Server) {
     registerHandlers(io, socket);
   });
 
-  io.on("disconnect", (socket: Socket) => {
+  io.on("disconnect", async (socket: Socket) => {
     console.log(`${socket.id} disconnected`);
   });
 
