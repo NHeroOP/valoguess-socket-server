@@ -30,7 +30,7 @@ export function roomListener(io: Server, socket: Socket) {
 
       await socket.join(room.id);
       io.to(room.id).emit(ServerEvents.ROOM_SYNC, roomMapper(room, socket.id));
-      io.to(socket.id).emit(ServerEvents.AUTH, reconnectToken)
+      socket.emit(ServerEvents.AUTH, reconnectToken)
     }),
   );
 
@@ -94,7 +94,7 @@ export function roomListener(io: Server, socket: Socket) {
     ClientEvents.ROOM_KICK,
     asyncHandler(socket, async ({ roomId, kickedPlayerId }) => {
       const { room, kickedPlayer } = await kickPlayerFromRoom(roomId, kickedPlayerId, socket.id);
-      
+
       const kickedPlayerSocket = io.sockets.sockets.get(kickedPlayer.socketId);
       if (kickedPlayerSocket) {
         kickedPlayerSocket.leave(roomId);

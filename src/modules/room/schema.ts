@@ -3,7 +3,6 @@ import * as z from "zod";
 export const playerSchema =  z.object({
   id: z.string(),
   username: z.string(),
-  reconnectToken: z.string(),
 })
 
 export type playerInput = z.infer<typeof playerSchema>;

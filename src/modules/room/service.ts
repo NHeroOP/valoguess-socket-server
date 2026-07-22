@@ -57,7 +57,7 @@ export async function createRoom(socketId: string, player: playerInput) {
   return { room, reconnectToken };
 }
 
-export async function addPlayerToRoom(roomId: string, player: Player) {
+export async function addPlayerToRoom(roomId: string, player: Omit<Player, "reconnectToken">) {
   const room = await getRoomById(roomId);
 
   if (!room) {
@@ -68,10 +68,15 @@ export async function addPlayerToRoom(roomId: string, player: Player) {
     throw new AppError("Room is full");
   }
 
+  const playerId = room.players.some((p) => p.id === player.id)
+    ? crypto.randomUUID()
+    : player.id;
+
   const newPlayer = {
-      ...player,
-      reconnectToken: crypto.randomUUID()
-    }
+    ...player,
+    id: playerId,
+    reconnectToken: crypto.randomUUID()
+  };
 
   room.players.push(newPlayer);
 
