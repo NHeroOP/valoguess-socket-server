@@ -40,6 +40,7 @@ export interface GameState {
   startedAt: number;
   currentTurn: string;
   turnNumber: number;
+  turnEndTime?: number;
   pendingQuestion?: PendingQuestion;
   history: QuestionHistory[];
   playerStates: Record<Player["id"], PlayerState>;
