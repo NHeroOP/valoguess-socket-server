@@ -47,6 +47,7 @@ export async function askQuestion(
     questionId,
   };
 
+
   await saveRoom(room);
   return room;
 }
@@ -91,9 +92,9 @@ export async function answerQuestion(
   });
 
   delete room.game.pendingQuestion;
-
   await saveRoom(room);
-  return room;
+
+  return changeTurn(roomId);
 }
 
 function finishGame(

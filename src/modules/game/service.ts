@@ -42,8 +42,12 @@ export async function startGame(roomId: string): Promise<Room> {
     playerStates: {},
   };
 
+  const availableAgents = [...AGENTS];
   for (const player of room.players) {
-    const secretAgent = getRandomAgent();
+    const randomIndex = Math.floor(Math.random() * availableAgents.length);
+    const secretAgent = availableAgents[randomIndex]!.id;
+    availableAgents.splice(randomIndex, 1);
+
     room.game.playerStates[player.id] = {
       secretAgent,
       guess: null,
@@ -52,8 +56,9 @@ export async function startGame(roomId: string): Promise<Room> {
     };
   }
 
-  startTurnTimer(room.id, room.settings.timePerRound)
-
+  startTurnTimer(room.id, room.settings.timePerRound*1000)
+  room.game.turnEndTime = Date.now() + room.settings.timePerRound * 1000;
+  
   await saveRoom(room);
   return room;
 }
@@ -87,7 +92,8 @@ export async function changeTurn(roomIdentifier: string | Room): Promise<Room> {
   room.game.currentTurn = nextTurnPlayer.id;
   room.game.turnNumber++;
   
-  restartTurnTimer(room.id, room.settings.timePerRound);
+  room.game.turnEndTime = Date.now() + room.settings.timePerRound * 1000;
+  restartTurnTimer(room.id, room.settings.timePerRound*1000);
 
   await saveRoom(room);
   return room;
