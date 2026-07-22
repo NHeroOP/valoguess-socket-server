@@ -36,6 +36,7 @@ export interface RoomSpectatorDTO {
 export interface GameStateDTO {
   startedAt: number;
   turnNumber: number;
+  turnEndTime?: number | null;
 
   pendingQuestion?: PendingQuestion | undefined;
   history: QuestionHistory[];
@@ -140,6 +141,7 @@ export function roomMapper(
   dto.game = {
     startedAt: room.game.startedAt,
     turnNumber: room.game.turnNumber,
+    turnEndTime: room.game.turnEndTime ?? null,
 
     pendingQuestion: room.game.pendingQuestion,
     history: room.game.history,
