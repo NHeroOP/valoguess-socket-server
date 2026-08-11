@@ -1,5 +1,5 @@
 import { clearTurnTimer } from "../game/timer.js";
-import { changeTurn } from "../game/service.js";
+import { changeTurn, finishGame } from "../game/service.js";
 import { getRoomById, saveRoom } from "../room/service.js";
 
 import { AppError } from "@/shared/utils/error.js";
@@ -26,6 +26,17 @@ export async function askQuestion(
   const currPlayer = room.players.find((player) => player.socketId === socketId);
   if (!currPlayer) {
     throw new AppError("Player not found", 404);
+  }
+  if (room.game.currentTurn !== currPlayer.id) {
+    throw new AppError("It's not your turn", 400);
+  }
+
+  const currPlayerState = room.game.playerStates[currPlayer.id];
+  if (!currPlayerState) {
+    throw new AppError("Player state not found", 400);
+  }
+  if (currPlayerState.nosRemaining <= 0 || currPlayerState.guessesRemaining <= 0) {
+    throw new AppError("No questions remaining", 400);
   }
 
   const questionAlreadyAsked = room.game.history.some(
@@ -83,6 +94,14 @@ export async function answerQuestion(
     throw new AppError("You are not the target player", 400);
   }
 
+  if (answer === "no") {
+    const playerThatAskedState = room.game.playerStates[room.game.pendingQuestion.askedBy];
+    if (!playerThatAskedState) {
+      throw new AppError("Player state not found", 400);
+    }
+    playerThatAskedState.nosRemaining--;
+  }
+
   room.game.history.push({
     askedBy: room.game.pendingQuestion.askedBy,
     targetPlayer: room.game.pendingQuestion.targetPlayer,
@@ -95,22 +114,6 @@ export async function answerQuestion(
   await saveRoom(room);
 
   return changeTurn(roomId);
-}
-
-function finishGame(
-  room: Room,
-  winnerId?: string
-) {
-
-  if (winnerId) {
-    room.game!.winnerId = winnerId;
-  } else {
-    delete room.game!.winnerId;
-  }
-  room.state = "finished";
-  room.game!.endedAt = Date.now();
-
-  clearTurnTimer(room.id);
 }
 
 export async function makeGuess(
@@ -172,37 +175,27 @@ export async function makeGuess(
   const playerGuessesExhausted = playerState.guessesRemaining <= 0;
   const opponentGuessesExhausted = opponentState.guessesRemaining <= 0;
 
-
-  if (hasOpponentGuessed) {
-    if (isOpponentGuessCorrect) { 
-
-      if (isGuessCorrect) { 
-        finishGame(room)        
-      } else {
-        if (playerGuessesExhausted) {
-          finishGame(room, opponentPlayer.id);
-        } else {
-          playerState.isGuessCorrect = false;
-          return await changeTurn(room);
-        }
-      }
-
-
-    } else {
-      if (opponentGuessesExhausted) {
-        finishGame(room, playerId);
-      } else {
-        playerState.isGuessCorrect = isGuessCorrect;
+  if (isGuessCorrect) {
+    if (!hasOpponentGuessed) {
+      return await finishGame(room, playerId);
+    } else if (!isOpponentGuessCorrect) {
+      return await finishGame(room, playerId);
+    }
+  }
+  else {
+    if (!playerGuessesExhausted) { 
+      playerState.guessesRemaining--;
+      return await changeTurn(room);
+    }
+    else {
+      if (!opponentGuessesExhausted) { 
         return await changeTurn(room);
+      } else {
+        return await finishGame(room);
       }
     }
-
-  } 
-  else {
-    playerState.isGuessCorrect = isGuessCorrect;
-    return await changeTurn(room);
   }
 
-  await saveRoom(room);
-  return room;
+  return await saveRoom(room);
+
 }
