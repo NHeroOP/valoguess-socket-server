@@ -1,4 +1,3 @@
-# ---------- Build Stage ----------
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -13,7 +12,7 @@ RUN npm run build
 
 RUN npm prune --omit=dev
 
-# ---------- Production Stage ----------
+
 FROM node:22-alpine
 
 WORKDIR /app
