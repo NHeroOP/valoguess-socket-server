@@ -1,11 +1,10 @@
 import type { Server, Socket } from "socket.io";
 
-import { startGame } from "./service.js";
+import { gameHeartbeat, startGame } from "./service.js";
 
 import { roomMapper } from "@/shared/utils/mapper.js";
 import { asyncHandler } from "@/shared/utils/asyncHandler.js";
 import { ClientEvents, ServerEvents } from "@/shared/consts/events.js";
-
 export function gameListener(io: Server, socket: Socket) {
   socket.on(
     ClientEvents.GAME_START,
@@ -21,4 +20,11 @@ export function gameListener(io: Server, socket: Socket) {
       }
     }),
   );
+
+  socket.on(
+    ClientEvents.GAME_HEARTBEAT, 
+    asyncHandler(socket, async (roomId: string) => {
+      await gameHeartbeat(roomId, socket.id);
+    })
+  )
 }

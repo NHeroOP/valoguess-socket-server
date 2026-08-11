@@ -8,6 +8,10 @@ export function startTurnTimer(
 ) {
   clearTurnTimer(roomId);
 
+  if (duration <= 0) {
+    return;
+  }
+
   const timeout = setTimeout(async () => {
     try {
       await changeTurn(roomId);

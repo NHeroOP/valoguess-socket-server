@@ -99,7 +99,40 @@ export async function changeTurn(roomIdentifier: string | Room): Promise<Room> {
   return room;
 }
 
+export async function gameHeartbeat(roomId: string, socketId: string): Promise<void> {
+  const room = await getRoomById(roomId);
 
+  if (!room) {
+    throw new AppError("Room not found");
+  }
+
+  const player = room.players.find(player => player.socketId === socketId);
+  if (!player) {
+    throw new AppError("Player not found in the room");
+  }
+
+  player.lastHeartbeatAt = Date.now();
+  await saveRoom(room);
+}
+
+
+export async function finishGame(
+  room: Room,
+  winnerId?: string
+) {
+
+  if (winnerId) {
+    room.game!.winnerId = winnerId;
+  } else {
+    delete room.game!.winnerId;
+  }
+  room.state = "finished";
+  room.game!.endedAt = Date.now();
+
+  clearTurnTimer(room.id);
+  
+  return await saveRoom(room);
+}
 
 // export async function resetGame(roomId: string): Promise<Room> {
 //   const room = await getRoomById(roomId);
