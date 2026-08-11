@@ -135,7 +135,7 @@ export function roomMapper(
   dto.opponent.state = mapPlayerState(
     room.game.playerStates[opponent.id]!,
     room.game.currentTurn === opponent.id,
-    false,
+    room.state === "finished" || room.game.endedAt !== undefined,
   );
 
   dto.game = {
