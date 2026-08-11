@@ -25,6 +25,19 @@ export async function getRoomById(roomId: string) {
 
 export async function saveRoom(room: Room) {
   await redis.setex(roomKey(room.id), ROOM_TTL, JSON.stringify(room));
+  return room;
+}
+
+export async function getActiveRooms() {
+  const keys = await redis.keys(`${ROOM_PREFIX}*`);
+  const rooms = await Promise.all(
+    keys.map(async (key) => {
+      const room = await redis.get(key);
+      return room ? JSON.parse(room) as Room : null;
+    }),
+  );
+
+  return rooms.filter((room): room is Room => room !== null);
 }
 
 export async function deleteRoom(roomId: string) {
@@ -40,6 +53,7 @@ export async function createRoom(socketId: string, player: playerInput) {
     username: player.username,
     reconnectToken,
     socketId: socketId,
+    lastHeartbeatAt: Date.now(),
   };
 
   const room: Room = {
@@ -57,7 +71,7 @@ export async function createRoom(socketId: string, player: playerInput) {
   return { room, reconnectToken };
 }
 
-export async function addPlayerToRoom(roomId: string, player: Omit<Player, "reconnectToken">) {
+export async function addPlayerToRoom(roomId: string, player: Omit<Player, "reconnectToken" | "lastHeartbeatAt">) {
   const room = await getRoomById(roomId);
 
   if (!room) {
@@ -75,7 +89,8 @@ export async function addPlayerToRoom(roomId: string, player: Omit<Player, "reco
   const newPlayer = {
     ...player,
     id: playerId,
-    reconnectToken: crypto.randomUUID()
+    reconnectToken: crypto.randomUUID(),
+    lastHeartbeatAt: Date.now(),
   };
 
   room.players.push(newPlayer);
@@ -181,6 +196,7 @@ export async function reconnectPlayerToRoom(
   }
 
   player.socketId = socketId;
+  player.lastHeartbeatAt = Date.now();
 
   await saveRoom(room);
 
