@@ -6,6 +6,7 @@ export const ClientEvents = {
   ROOM_KICK: "room:kick",
 
   ROOM_RECONNECT: "room:reconnect",
+  GAME_HEARTBEAT: "game:heartbeat",
 
   GAME_START: "game:start",
 

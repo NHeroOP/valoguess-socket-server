@@ -2,18 +2,21 @@ export interface Settings {
   maxNos: number;
   maxRounds: number;
   timePerRound: number;
+  // maxGuesses: number;
 }
 
 export const DefaultSettings: Settings = {
   maxNos: 5,
   maxRounds: -1,
-  timePerRound: 60,
+  timePerRound: -1,
+  // maxGuesses: 1,
 }
 
 export interface Player {
   id: string;
   username: string;
   socketId: string;
+  lastHeartbeatAt: number;
   reconnectToken: string | null;
 }
 
