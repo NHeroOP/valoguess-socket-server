@@ -28,16 +28,13 @@ export interface PlayerDTO {
   state: PlayerGameStateDTO;
 }
 
-export interface RoomSpectatorDTO {
-  id: string;
-  username: string;
-}
 
 export interface GameStateDTO {
   startedAt: number;
   turnNumber: number;
   turnEndTime?: number | null;
 
+  questionPool: string[];
   pendingQuestion?: PendingQuestion | undefined;
   history: QuestionHistory[];
 
@@ -53,7 +50,6 @@ export interface RoomDTO {
   me: PlayerDTO;
   opponent?: PlayerDTO;
 
-  spectators: RoomSpectatorDTO[];
 
   settings: Settings;
   createdAt: number;
@@ -92,12 +88,6 @@ export function roomMapper(
         guessesRemaining: 0,
       },
     },
-
-    spectators: room.spectators.map((s) => ({
-      id: s.id,
-      username: s.username,
-    })),
-
     settings: room.settings,
     createdAt: room.createdAt,
   };
@@ -143,6 +133,7 @@ export function roomMapper(
     turnNumber: room.game.turnNumber,
     turnEndTime: room.game.turnEndTime ?? null,
 
+    questionPool: room.game.questionPool,
     pendingQuestion: room.game.pendingQuestion,
     history: room.game.history,
 
