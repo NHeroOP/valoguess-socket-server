@@ -4,17 +4,69 @@ import { AppError } from "@/shared/utils/error.js";
 import { AGENTS } from "@/shared/consts/agents.js";
 import type { Player, Room } from "@/shared/consts/types.js";
 import { clearTurnTimer, restartTurnTimer, startTurnTimer } from "./timer.js";
+import { DIFFICULTY_PERCENTAGES, QUESTIONS, type Question, type QuestionDifficulty, type QuestionId } from "@/shared/consts/questions.js";
 
-/*
-  Todo: Change guessRemaining to a number that can be set in the settings, and not just 1.
-  in assignSecretAgents function
-*/
+function shuffle<T>(array: T[]): T[] {
+  const result = [...array];
 
-function getRandomAgent(): string {
-  const randomIndex = Math.floor(Math.random() * AGENTS.length);
-  return AGENTS[randomIndex]!.id;
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+
+    [result[i], result[j]] = [
+      result[j]!,
+      result[i]!,
+    ];
+  }
+
+  return result;
 }
 
+export function selectQuestionIds(
+  count: number,
+): QuestionId[] {
+  const questionsByDifficulty: Record<
+    QuestionDifficulty,
+    QuestionId[]
+  > = {
+    low: [],
+    medium: [],
+    high: [],
+  };
+
+  for (const [id, question] of Object.entries(QUESTIONS)) {
+    questionsByDifficulty[question.difficulty].push(id);
+  }
+
+  const lowCount = Math.round(
+    count * DIFFICULTY_PERCENTAGES.low,
+  );
+
+  const mediumCount = Math.round(
+    count * DIFFICULTY_PERCENTAGES.medium,
+  );
+
+  const highCount =
+    count - lowCount - mediumCount;
+
+  const selected: QuestionId[] = [
+    ...shuffle(questionsByDifficulty.low).slice(
+      0,
+      lowCount,
+    ),
+
+    ...shuffle(questionsByDifficulty.medium).slice(
+      0,
+      mediumCount,
+    ),
+
+    ...shuffle(questionsByDifficulty.high).slice(
+      0,
+      highCount,
+    ),
+  ];
+
+  return shuffle(selected);
+}
 
 export async function startGame(roomId: string): Promise<Room> {
   const room = await getRoomById(roomId);
@@ -31,6 +83,8 @@ export async function startGame(roomId: string): Promise<Room> {
     throw new AppError("Not enough players to start the game");
   }
 
+
+
   const currentTurn = room.players[Math.floor(Math.random() * 2)]!.id;
 
   room.state = "playing";
@@ -39,6 +93,7 @@ export async function startGame(roomId: string): Promise<Room> {
     currentTurn,
     turnNumber: 1,
     history: [],
+    questionPool: selectQuestionIds(room.settings.questionCount),
     playerStates: {},
   };
 
@@ -52,7 +107,7 @@ export async function startGame(roomId: string): Promise<Room> {
       secretAgent,
       guess: null,
       nosRemaining: room.settings.maxNos,
-      guessesRemaining: 1,
+      guessesRemaining: room.settings.maxGuesses,
     };
   }
 
@@ -134,23 +189,28 @@ export async function finishGame(
   return await saveRoom(room);
 }
 
-// export async function resetGame(roomId: string): Promise<Room> {
-//   const room = await getRoomById(roomId);
+export async function resetGame(roomId: string, socketId: string): Promise<Room> {
+  const room = await getRoomById(roomId);
 
-//   if (!room) {
-//     throw new AppError("Room not found");
-//   }
+  if (!room) {
+    throw new AppError("Room not found");
+  }
 
-//   room.state = "waiting";
-//   delete room.game;
+  const player = room.players.find(player => player.socketId === socketId);
+  if (player?.id !== room.hostId) {
+    throw new AppError("Only the host can reset the game");
+  }
 
-//   for (const player of room.players) {
-//     player.ready = false;
-//   }
+  if (room.state !== "finished") {
+    throw new AppError("Game is not finished");
+  }
 
-//   await saveRoom(room);
-//   return room;
-// }
+  room.state = "waiting";
+  delete room.game;
+
+  await saveRoom(room);
+  return room;
+}
 
 export async function getCurrentPlayer(roomId: string, socketId: string): Promise<Player> {
 
@@ -172,28 +232,6 @@ export async function getCurrentPlayer(roomId: string, socketId: string): Promis
 
   return currentPlayer;
 }
-
-
-// export async function endGame(roomId: string, winnerId: string): Promise<Room> {
-//   const room = await getRoomById(roomId);
-
-//   if (!room) {
-//     throw new AppError("Room not found");
-//   }
-
-//   if (room.state !== "playing") {
-//     throw new AppError("Game is not currently in progress");
-//   }
-
-//   room.state = "finished";
-//   room.game!.winnerId = winnerId;
-//   room.game!.endedAt = Date.now();
-
-//   clearTurnTimer(roomId);
-
-//   await saveRoom(room);
-//   return room;
-// }
 
 
 export async function checkWinCon(roomId: string): Promise<{
