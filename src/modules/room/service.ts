@@ -61,7 +61,6 @@ export async function createRoom(socketId: string, player: playerInput) {
     state: "waiting",
     hostId: host.id,
     players: [host],
-    spectators: [],
     settings: DefaultSettings,
     createdAt: Date.now(),
   };

@@ -18,9 +18,19 @@ export type joinRoomPayload = z.infer<typeof joinRoomSchema>;
 export const updateRoomSchema = z.object({
   roomId: z.string(),
   settings: z.object({
-    maxNos: z.number().int().min(1).max(10),
-    maxRounds: z.number().int().min(1).max(10),
-    timePerRound: z.number().int().min(10).max(300),
+    maxNos: z.union([
+      z.number().int().min(1).max(10),
+      z.literal(-1)
+    ]),
+    maxGuesses: z.union([
+      z.number().int().min(1).max(10),
+      z.literal(-1)
+    ]),
+    timePerRound: z.union([
+      z.number().int().min(10).max(1000),
+      z.literal(-1)
+    ]),
+    questionCount: z.number().int().min(5).max(60),
   }),
 });
 
