@@ -52,6 +52,10 @@ export async function askQuestion(
     throw new AppError("There is already a pending question", 400);
   }
 
+  if (!room.game.questionPool.includes(questionId)) {
+    throw new AppError("The question is not in the pool", 400);
+  }
+
   room.game.pendingQuestion = {
     askedBy: currPlayer.id,
     targetPlayer: room.players.find((player) => player.id !== currPlayer.id)!.id,
