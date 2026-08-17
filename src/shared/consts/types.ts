@@ -1,15 +1,16 @@
 export interface Settings {
   maxNos: number;
-  maxRounds: number;
   timePerRound: number;
-  // maxGuesses: number;
+  maxGuesses: number;
+  questionCount: number;
+  // questionPool?: string[] | undefined;
 }
 
 export const DefaultSettings: Settings = {
   maxNos: 5,
-  maxRounds: -1,
   timePerRound: -1,
-  // maxGuesses: 1,
+  maxGuesses: 1,
+  questionCount: 15,
 }
 
 export interface Player {
@@ -20,12 +21,6 @@ export interface Player {
   reconnectToken: string | null;
 }
 
-export interface Spectator {
-  id: string;
-  username: string;
-  socketId: string;
-}
-
 export type RoomState = "waiting" | "playing" | "finished";
 
 export interface Room {
@@ -33,7 +28,6 @@ export interface Room {
   state: RoomState;
   hostId: string;
   players: Player[];
-  spectators: Spectator[];
   settings: Settings;
   game?: GameState;
   createdAt: number;
@@ -46,6 +40,7 @@ export interface GameState {
   turnEndTime?: number;
   pendingQuestion?: PendingQuestion;
   history: QuestionHistory[];
+  questionPool: string[];
   playerStates: Record<Player["id"], PlayerState>;
   winnerId?: string;
   endedAt?: number;
